@@ -155,7 +155,7 @@
       tooltip:{callbacks:{title:function(it){return 'assumed ζ = '+(Math.round(it[0].parsed.x*1000)/1000);},
         label:function(it){return it.dataset.label+': '+(Math.round(it.parsed.y*1000)/10)+'%';}}}},
     scales:{x:{type:'linear',min:0.01,max:0.2,grid:{display:false},ticks:{color:muted},title:{display:true,text:"shaper's assumed damping ratio ζ",color:muted}},
-      y:{min:0,grid:{color:grid},ticks:{color:muted,callback:function(v){return Math.round(v*100)+'%';}},title:{display:true,text:'residual at peak',color:muted}}}};
+      y:{min:0,grid:{color:grid},ticks:{color:muted,callback:function(v){var mx=this.max||1,d=mx<0.03?2:(mx<0.3?1:0);return (v*100).toFixed(d)+'%';}},title:{display:true,text:'residual at peak',color:muted}}}};
   var c2=new Chart(document.getElementById('c2'),{type:'line',data:{datasets:[
     Object.assign(ln(BLUE),{label:'residual @ peak 1'}),
     Object.assign(ln(AMBER,[6,4]),{label:'residual @ peak 2'}),
