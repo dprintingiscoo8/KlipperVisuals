@@ -21,7 +21,7 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:var(--font-sans);line-height:1.6;}
-  .wrap{max-width:780px;margin:0 auto;padding:2.5rem 1.25rem 4rem;}
+  .wrap{max-width:1040px;margin:0 auto;padding:2.5rem 1.25rem 4rem;}
   h1{font-size:24px;font-weight:500;margin:0 0 .25rem;}
   .sub{color:var(--text-secondary);font-size:15px;margin:0 0 2rem;}
   a{color:var(--blue);text-decoration:none;}
@@ -37,34 +37,17 @@
   .note{margin-top:2rem;padding:1rem 1.25rem;background:var(--surface-1);border:.5px solid var(--border);
         border-radius:var(--radius);font-size:13.5px;color:var(--text-secondary);}
   .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
-  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:.7rem 0 .85rem;margin-bottom:1.5rem;border-bottom:.5px solid var(--border);font-size:14px;}
-  .topnav .brand{font-weight:500;color:var(--text-primary);text-decoration:none;margin-right:auto;}
-  .topnav .links{display:flex;flex-wrap:wrap;gap:12px 16px;}
-  .topnav a.nav{color:var(--text-secondary);text-decoration:none;padding-bottom:3px;border-bottom:2px solid transparent;}
-  .topnav a.nav:hover{color:var(--text-primary);text-decoration:none;}
-  .topnav a.nav.current{color:var(--blue);border-bottom-color:var(--blue);}
-  .topnav .brand.current{border-bottom:2px solid var(--blue);padding-bottom:3px;}
 </style>
 </head>
 <body>
+<script src="nav.js"></script>
 <div class="wrap">
-  <nav class="topnav">
-    <a class="brand current" href="index.html">KlipperVisuals</a>
-    <div class="links">
-      <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
-      <a class="nav" href="input_shaper_response.html">Input shapers</a>
-      <a class="nav" href="smoother_vs_shaper.html">Smoothers</a>
-      <a class="nav" href="extruder_smoother_fit.html">Extruder fit</a>
-      <a class="nav" href="resonance_excitation.html">Resonance test</a>
-      <a class="nav" href="shaper_estimation_method.html">Estimation</a>
-    </div>
-  </nav>
   <h1>KlipperVisuals</h1>
   <p class="sub">Interactive visualizations of motion-control internals in Klipper / Kalico — pressure advance, input shaping, and resonance compensation.</p>
 
   <a class="card" href="nonlinear_pa_explorer.html">
     <h2>Nonlinear pressure advance explorer<span class="tag">tanh vs recipr</span></h2>
-    <p>Compare the two nonlinear pressure-advance models. Adjust ADVANCE, OFFSET, VELOCITY and a test move to see advance-vs-velocity, extruder flow rate, and acceleration demand, with the firmware's parabolic extruder smoother and a time-offset control.</p>
+    <p>Compare the <code>tanh</code> and <code>recipr</code> nonlinear models against an upstream linear-PA line. Adjust ADVANCE, OFFSET, VELOCITY and a test move to see advance-vs-velocity, extruder flow rate, and acceleration demand, with the firmware's parabolic extruder smoother and a time-offset control.</p>
   </a>
 
   <a class="card" href="input_shaper_response.html">

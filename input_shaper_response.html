@@ -22,7 +22,7 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:var(--font-sans);line-height:1.6;}
-  .wrap{max-width:820px;margin:0 auto;padding:2rem 1.25rem 4rem;}
+  .wrap{max-width:1040px;margin:0 auto;padding:2rem 1.25rem 4rem;}
   h1{font-size:22px;font-weight:500;margin:0 0 .25rem;}
   .sub{color:var(--text-secondary);font-size:15px;margin:0 0 1.5rem;}
   .back{font-size:13px;color:var(--blue);text-decoration:none;}
@@ -52,28 +52,11 @@
   .card .v{font-size:20px;font-weight:500;margin-top:2px;}
   .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
   a{color:var(--blue);}
-  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:.7rem 0 .85rem;margin-bottom:1.25rem;border-bottom:.5px solid var(--border);font-size:14px;}
-  .topnav .brand{font-weight:500;color:var(--text-primary);text-decoration:none;margin-right:auto;}
-  .topnav .links{display:flex;flex-wrap:wrap;gap:12px 16px;}
-  .topnav a.nav{color:var(--text-secondary);text-decoration:none;padding-bottom:3px;border-bottom:2px solid transparent;}
-  .topnav a.nav:hover{color:var(--text-primary);}
-  .topnav a.nav.current{color:var(--blue);border-bottom-color:var(--blue);}
-  .topnav .brand.current{border-bottom:2px solid var(--blue);padding-bottom:3px;}
 </style>
 </head>
 <body>
+<script src="nav.js"></script>
 <div class="wrap">
-  <nav class="topnav">
-    <a class="brand" href="index.html">KlipperVisuals</a>
-    <div class="links">
-      <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
-      <a class="nav current" href="input_shaper_response.html">Input shapers</a>
-      <a class="nav" href="smoother_vs_shaper.html">Smoothers</a>
-      <a class="nav" href="extruder_smoother_fit.html">Extruder fit</a>
-      <a class="nav" href="resonance_excitation.html">Resonance test</a>
-      <a class="nav" href="shaper_estimation_method.html">Estimation</a>
-    </div>
-  </nav>
   <h1>Input shaper response explorer</h1>
   <p class="sub">Residual-vibration ratio vs frequency for each Klipper/Kalico input shaper, computed from the impulse sequences in <code>shaper_defs.py</code>. The <code>3hump_ei</code> shaper (◆) differs between a corrected version and upstream — a coefficient bug fix that matters at non-zero damping.</p>
 
