@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two-mode input shaper — prototype — Klipper / Kalico</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  html{overflow-y:scroll;}
+  :root{
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --surface-0:#f4f3ee; --surface-1:#faf9f5; --surface-2:#ffffff;
+    --border:rgba(11,11,11,.12); --radius:8px;
+    --grid:#e1e0d9; --blue:#2a78d6; --amber:#c98500; --teal:#1d9e75;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --text-primary:#f2f1ea; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --surface-0:#191918; --surface-1:#1f1f1e; --surface-2:#262625;
+      --border:rgba(255,255,255,.14); --grid:#2c2c2a; --blue:#4f97e8; --amber:#eab308; --teal:#3fbf95;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:var(--font-sans);line-height:1.6;}
+  .wrap{max-width:1040px;margin:0 auto;padding:2rem 1.25rem 4rem;}
+  h1{font-size:22px;font-weight:500;margin:.5rem 0 .25rem;}
+  .sub{color:var(--text-secondary);font-size:15px;margin:0 0 1.5rem;}
+  code{font-family:var(--font-mono);font-size:.9em;}
+  .grouplabel{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin:1rem 0 .5rem;}
+  .types{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;}
+  .types button{font-family:inherit;font-size:13px;padding:6px 12px;border-radius:var(--radius);border:.5px solid var(--border);background:var(--surface-2);color:var(--text-secondary);cursor:pointer;}
+  .types button.on{border-color:var(--blue);color:var(--blue);background:rgba(42,120,214,.08);font-weight:500;}
+  .row{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:1rem;}
+  .ctl{flex:1;min-width:150px;}
+  .ctl .lbl{display:flex;justify-content:space-between;font-size:13px;color:var(--text-secondary);margin-bottom:4px;}
+  .ctl .val{font-weight:500;color:var(--text-primary);}
+  input[type=range]{width:100%;accent-color:var(--blue);}
+  .cap{font-size:13px;color:var(--text-secondary);margin:1.1rem 0 2px;}
+  .chart{position:relative;width:100%;height:320px;}
+  .note{margin:1rem 0;padding:.85rem 1.1rem;border-radius:var(--radius);font-size:13.5px;border:.5px solid var(--border);background:var(--surface-1);color:var(--text-secondary);}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:1.25rem;}
+  .card{background:var(--surface-1);border:.5px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem;}
+  .card .k{font-size:13px;color:var(--text-secondary);}
+  .card .v{font-size:19px;font-weight:500;margin-top:2px;}
+  .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
+  a{color:var(--blue);}
+</style>
+</head>
+<body>
+<script src="nav.js"></script>
+<div class="wrap">
+  <h1>Two-mode input shaper <span style="font-size:13px;color:var(--text-muted);font-weight:400;">(prototype / concept)</span></h1>
+  <p class="sub">When an axis has <em>two</em> separated resonances, the standard shapers force a choice: tune to one peak and leave the other, or use a broadband smoother wide enough to blanket the whole span. A <strong>two-mode</strong> shaper — the convolution of a single-mode shaper tuned to each peak — places a notch at <em>both</em> frequencies. Its residual is the product of the two, so it drives both to (near) zero. Defaults match a measured Y axis with peaks at 45.2 Hz and 79.5 Hz, ζ≈0.043.</p>
+
+  <div class="grouplabel">base shaper (convolved at each peak)</div>
+  <div class="types" id="types"></div>
+
+  <div class="row">
+    <div class="ctl"><div class="lbl"><span>peak 1 (Hz)</span><span class="val" id="o-p1">45.2</span></div><input type="range" id="p1" min="20" max="120" step="0.1" value="45.2"></div>
+    <div class="ctl"><div class="lbl"><span>peak 2 (Hz)</span><span class="val" id="o-p2">79.5</span></div><input type="range" id="p2" min="20" max="160" step="0.1" value="79.5"></div>
+    <div class="ctl"><div class="lbl"><span>damping_ratio</span><span class="val" id="o-z">0.043</span></div><input type="range" id="z" min="0.02" max="0.2" step="0.001" value="0.043"></div>
+  </div>
+
+  <p style="font-size:13px;color:var(--text-muted);margin:.25rem 0 1rem;">Click a legend entry to hide or show that line.</p>
+
+  <div class="cap">residual vibration vs frequency <span style="color:var(--text-muted)">(dashed verticals mark the two measured peaks; lower = better)</span></div>
+  <div class="chart"><canvas id="c1"></canvas></div>
+
+  <div class="cards" id="cards"></div>
+  <div class="note" id="note"></div>
+
+  <p class="foot">Two-mode shaper = convolution of the base shaper tuned to each peak (amplitudes multiply, times add); residual computed with the classic amplitude formula (see the <a href="input_shaper_response.html">input shaper page</a>). The broadband reference is <code>smooth_zvd_ei</code> tuned to peak&nbsp;1, the widest existing smoother. Convolution-based multi-mode shaping is established signal-processing theory; it is <strong>not</strong> currently a Kalico shaper type — this page is a concept prototype. In Kalico it could be added as a shaper that accepts two frequencies (from the two strongest peaks the resonance test already detects). Narrow notches need accurate peak frequencies; a broadband smoother is more tolerant of drift. Rendered with Chart.js.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function(){
+  var css=getComputedStyle(document.documentElement);
+  function gv(n,f){return (css.getPropertyValue(n).trim())||f;}
+  var muted=gv('--text-muted','#898781'), grid=gv('--grid','#e1e0d9');
+  var BLUE=gv('--blue','#2a78d6'), AMBER=gv('--amber','#c98500'), TEAL=gv('--teal','#1d9e75');
+
+  function zv(f,z){var df=Math.sqrt(1-z*z),K=Math.exp(-z*Math.PI/df),td=1/(f*df);return{A:[1,K],T:[0,0.5*td]};}
+  function mzv(f,z){var df=Math.sqrt(1-z*z),K=Math.exp(-0.75*z*Math.PI/df),td=1/(f*df);
+    var a1=1-1/Math.SQRT2,a2=(Math.SQRT2-1)*K,a3=a1*K*K;return{A:[a1,a2,a3],T:[0,0.375*td,0.75*td]};}
+  function ei(f,z){var vt=1/20,df=Math.sqrt(1-z*z),td=1/(f*df);
+    var a1=(0.24968+0.24961*vt)+((0.80008+1.23328*vt)+(0.49599+3.17316*vt)*z)*z;
+    var a3=(0.25149+0.21474*vt)+((-0.83249+1.41498*vt)+(0.85181-4.90094*vt)*z)*z;
+    var a2=1-a1-a3;var t2=0.4999+(((0.46159+8.57843*vt)*vt)+(((4.26169-108.644*vt)*vt)+((1.75601+336.989*vt)*vt)*z)*z)*z;
+    return{A:[a1,a2,a3],T:[0,t2*td,td]};}
+  var BASE={ZV:zv,MZV:mzv,EI:ei}, current='ZV';
+
+  function convolve(s1,s2){var A=[],T=[];
+    for(var i=0;i<s1.A.length;i++)for(var j=0;j<s2.A.length;j++){A.push(s1.A[i]*s2.A[j]);T.push(s1.T[i]+s2.T[j]);}
+    return{A:A,T:T};}
+  function residual(sh,f,z){var A=sh.A,T=sh.T,n=A.length,sA=0,Tn=0,i;
+    for(i=0;i<n;i++){sA+=A[i];if(T[i]>Tn)Tn=T[i];}
+    var w=2*Math.PI*f,wd=w*Math.sqrt(1-z*z),S=0,C=0;
+    for(i=0;i<n;i++){var Wk=A[i]*Math.exp(-z*w*(Tn-T[i]));S+=Wk*Math.sin(wd*T[i]);C+=Wk*Math.cos(wd*T[i]);}
+    return Math.sqrt(S*S+C*C)/sA;}
+  function dur(sh){var m=0;for(var i=0;i<sh.T.length;i++)if(sh.T[i]>m)m=sh.T[i];return m;}
+
+  // broadband reference: smooth_zvd_ei (widest smoother), raw coeffs highest-degree-first
+  var SZVD={c:[-18835.07746719777,1914.349309746547,8786.608981369287,-807.3061869131075,-1209.429748155012,96.48879052981883,43.1595785340444,-3.577268915175282,1.083220648523371],tf:1.475};
+  function windowW(c,tau){var w=0;for(var i=0;i<c.length;i++)w=w*tau+c[i];return w;}
+  function smootherShaper(sm,f){var t_sm=sm.tf/f,M=200,A=[],T=[];
+    for(var i=0;i<=M;i++){var tau=-0.5+i/M,wv=windowW(sm.c,tau);if(wv<0)wv=0;A.push(wv);T.push((tau+0.5)*t_sm);}
+    return{A:A,T:T};}
+
+  var opts={responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'top',align:'start',labels:{color:muted,usePointStyle:true,pointStyle:'line',boxWidth:26,padding:12,font:{size:12}}},
+      tooltip:{callbacks:{title:function(it){return (Math.round(it[0].parsed.x*10)/10)+' Hz';},
+        label:function(it){return it.dataset.label+': '+(Math.round(it.parsed.y*1000)/10)+'%';}}}},
+    scales:{x:{type:'linear',min:0,max:160,grid:{display:false},ticks:{color:muted},title:{display:true,text:'frequency (Hz)',color:muted}},
+      y:{min:0,max:1.5,grid:{color:grid},ticks:{color:muted,callback:function(v){return Math.round(v*100)+'%';}},title:{display:true,text:'residual vibration',color:muted}}}};
+  function ln(color,dash,w){return{data:[],borderColor:color,borderWidth:w||2,borderDash:dash||[],pointRadius:0,tension:0.05};}
+  var c1=new Chart(document.getElementById('c1'),{type:'line',data:{datasets:[
+    Object.assign(ln(BLUE),{label:'two-mode'}),
+    Object.assign(ln(AMBER,[6,4]),{label:'single-mode (peak 1)'}),
+    Object.assign(ln(TEAL,[2,3]),{label:'broadband smoother'}),
+    Object.assign(ln(muted,[4,4],1),{label:'peak 1'}),
+    Object.assign(ln(muted,[4,4],1),{label:'peak 2'})]},options:opts});
+
+  function card(k,val,color){return '<div class="card"><div class="k">'+k+'</div><div class="v"'+(color?' style="color:'+color+'"':'')+'>'+val+'</div></div>';}
+  function pct(x){return (Math.round(x*1000)/10).toFixed(1)+'%';}
+
+  function update(){
+    var p1=+document.getElementById('p1').value, p2=+document.getElementById('p2').value, z=+document.getElementById('z').value;
+    document.getElementById('o-p1').textContent=p1.toFixed(1);
+    document.getElementById('o-p2').textContent=p2.toFixed(1);
+    document.getElementById('o-z').textContent=z.toFixed(3);
+    var fn=BASE[current];
+    var single=fn(p1,z), two=convolve(fn(p1,z),fn(p2,z)), bb=smootherShaper(SZVD,p1);
+
+    var pts=320, dTwo=[],dSingle=[],dBB=[];
+    for(var i=0;i<=pts;i++){var f=1+(159)*i/pts;
+      dTwo.push({x:f,y:residual(two,f,z)});
+      dSingle.push({x:f,y:residual(single,f,z)});
+      dBB.push({x:f,y:residual(bb,f,z)});}
+    c1.data.datasets[0].data=dTwo;
+    c1.data.datasets[1].data=dSingle;
+    c1.data.datasets[2].data=dBB;
+    c1.data.datasets[3].data=[{x:p1,y:0},{x:p1,y:1.5}];
+    c1.data.datasets[4].data=[{x:p2,y:0},{x:p2,y:1.5}];
+    c1.data.datasets[3].label='peak 1 ('+p1.toFixed(0)+' Hz)';
+    c1.data.datasets[4].label='peak 2 ('+p2.toFixed(0)+' Hz)';
+    c1.update();
+
+    document.getElementById('cards').innerHTML=
+      card('two-mode — V@P1 / V@P2', pct(residual(two,p1,z))+' / '+pct(residual(two,p2,z)), BLUE)+
+      card('single-mode — V@P1 / V@P2', pct(residual(single,p1,z))+' / '+pct(residual(single,p2,z)), AMBER)+
+      card('broadband — V@P1 / V@P2', pct(residual(bb,p1,z))+' / '+pct(residual(bb,p2,z)), TEAL)+
+      card('duration — two-mode / broadband', (dur(two)*1000).toFixed(1)+' / '+(dur(bb)*1000).toFixed(1)+' ms');
+
+    document.getElementById('note').innerHTML=
+      'The <strong>single-mode</strong> shaper notches peak&nbsp;1 but lets peak&nbsp;2 through. The <strong>broadband smoother</strong> covers both but with shallower suppression and a longer window. The <strong>two-mode</strong> shaper puts a deep notch at each peak. '+
+      'With base '+current+', two-mode drives both peaks to '+pct(residual(two,p1,z))+' / '+pct(residual(two,p2,z))+' at '+(dur(two)*1000).toFixed(1)+'&nbsp;ms — pick ZV/MZV for the shortest deep notches, EI for wider (drift-tolerant) notches at a longer window.';
+  }
+
+  var tc=document.getElementById('types');
+  ['ZV','MZV','EI'].forEach(function(name){var b=document.createElement('button');b.textContent=name;
+    if(name===current)b.className='on';
+    b.onclick=function(){current=name;Array.prototype.forEach.call(tc.children,function(ch){ch.classList.remove('on');});b.classList.add('on');update();};
+    tc.appendChild(b);});
+  ['p1','p2','z'].forEach(function(id){document.getElementById(id).addEventListener('input',update);});
+  update();
+})();
+</script>
+</body>
+</html>

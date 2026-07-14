@@ -57,6 +57,11 @@
     <p>Residual-vibration curves for every input shaper (ZV, MZV, ZVD, EI, 2hump/3hump EI), reproduced from <code>shaper_defs.py</code>. Overlays a corrected <code>3hump_ei</code> against upstream for the coefficient bug, with an impulse view and a damping-ratio sweep showing where upstream's truncated polynomial degrades.</p>
   </a>
 
+  <a class="card" href="two_mode_shaper.html">
+    <h2>Two-mode input shaper<span class="tag">prototype</span></h2>
+    <p>A concept shaper for axes with <strong>two</strong> resonances: the convolution of a single-mode shaper tuned to each peak notches both at once. Compares it against a single-mode shaper and a broadband smoother, defaulting to a measured 45.2 / 79.5 Hz Y axis. Not a Kalico shaper type — an exploration of a possible one.</p>
+  </a>
+
   <a class="card" href="smoother_vs_shaper.html">
     <h2>Smoothers vs shapers<span class="tag">Kalico feature</span></h2>
     <p>Kalico input smoothers replace a shaper's discrete impulses with a smooth polynomial window. Compare any shaper against any smoother on shared vibration-reduction axes and in the time domain, from the <code>get_*_smoother</code> definitions in <code>shaper_defs.py</code>.</p>
