@@ -74,7 +74,16 @@
   <div class="cards" id="cards"></div>
   <div class="note" id="note"></div>
 
-  <p class="foot">Two-mode shaper = convolution of the base shaper tuned to each peak (amplitudes multiply, times add); residual computed with the classic amplitude formula (see the <a href="input_shaper_response.html">input shaper page</a>). The broadband reference is <code>smooth_zvd_ei</code> tuned to peak&nbsp;1, the widest existing smoother. Convolution-based multi-mode shaping is established signal-processing theory; it is <strong>not</strong> currently a Kalico shaper type — this page is a concept prototype. In Kalico it could be added as a shaper that accepts two frequencies (from the two strongest peaks the resonance test already detects). Narrow notches need accurate peak frequencies; a broadband smoother is more tolerant of drift. Rendered with Chart.js.</p>
+  <div class="cap" style="margin-top:1.5rem;">extruder synchronization kernel <span style="color:var(--text-muted)">(exact convolution vs a fitted smoother counterpart, over the shaper's own duration)</span></div>
+  <div class="chart" style="height:230px;"><canvas id="c3"></canvas></div>
+
+  <div class="cap">extruder acceleration demand at a sharp corner <span style="color:var(--text-muted)">(100&rarr;20&nbsp;mm/s corner, exact vs fitted)</span></div>
+  <div class="chart" style="height:230px;"><canvas id="c4"></canvas></div>
+
+  <div class="cards" id="cards2"></div>
+  <div class="note" id="note2"></div>
+
+  <p class="foot">Two-mode shaper = convolution of the base shaper tuned to each peak (amplitudes multiply, times add); residual computed with the classic amplitude formula (see the <a href="input_shaper_response.html">input shaper page</a>). The broadband reference is <code>smooth_zvd_ei</code> tuned to peak&nbsp;1, the widest existing smoother. Convolution-based multi-mode shaping is established signal-processing theory; it is <strong>not</strong> currently a Kalico shaper type — this page is a concept prototype. In Kalico it could be added as a shaper that accepts two frequencies (from the two strongest peaks the resonance test already detects). Narrow notches need accurate peak frequencies; a broadband smoother is more tolerant of drift. The fitted extruder kernel reproduces Kalico's real fitting procedure (Legendre-basis, KKT-constrained least squares with a soft non-negativity penalty, evaluated near both peaks with each peak's own damping) &mdash; the same algorithm as <code>extruder_smoother.get_two_mode_extruder_smoother</code>. Rendered with Chart.js.</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -114,6 +123,155 @@
     for(i=0;i<n;i++){var Wk=A[i]*Math.exp(-z*w*(Tn-T[i]));S+=Wk*Math.sin(wd*T[i]);C+=Wk*Math.cos(wd*T[i]);}
     return Math.sqrt(S*S+C*C)/sA;}
   function dur(sh){var m=0;for(var i=0;i<sh.T.length;i++)if(sh.T[i]>m)m=sh.T[i];return m;}
+
+  // ---- fitted extruder-smoother counterpart for the two-mode shaper ----
+  // Ports extruder_smoother.get_two_mode_extruder_smoother: Legendre-basis,
+  // KKT-constrained least squares with a soft non-negativity penalty,
+  // fit in a frequency-ratio-preserving unit system (a two-mode shaper's
+  // shape depends on freq2/freq1, not just an overall scale).
+  function legendreCoeffTable(maxDeg){
+    var legC=[[1],[0,1]];
+    for(var k=2;k<=maxDeg;k++){
+      var prev1=legC[k-1],prev2=legC[k-2];
+      var xTimesPrev1=[0].concat(prev1);
+      var len=Math.max(xTimesPrev1.length,prev2.length),newP=[];
+      for(var i=0;i<len;i++){var a=(2*k-1)*(xTimesPrev1[i]||0),b=(k-1)*(prev2[i]||0);newP.push((a-b)/k);}
+      legC.push(newP);
+    }
+    return legC;
+  }
+  function legendreVander(xs,degMax){
+    var n=degMax+1,P=[];
+    for(var i=0;i<xs.length;i++){
+      var row=new Array(n); row[0]=1; if(n>1)row[1]=xs[i];
+      for(var k=2;k<n;k++)row[k]=((2*k-1)*xs[i]*row[k-1]-(k-1)*row[k-2])/k;
+      P.push(row);
+    }
+    return P;
+  }
+  function leg2poly(a,legC){
+    var n=a.length,out=new Array(n).fill(0);
+    for(var k=0;k<n;k++){var pk=legC[k];for(var i=0;i<pk.length;i++)out[i]+=a[k]*pk[i];}
+    return out;
+  }
+  function solveLinear(A,b){
+    var n=b.length,M=A.map(function(row,i){return row.slice().concat([b[i]]);});
+    for(var col=0;col<n;col++){
+      var piv=col;
+      for(var r=col+1;r<n;r++)if(Math.abs(M[r][col])>Math.abs(M[piv][col]))piv=r;
+      var tmp=M[col];M[col]=M[piv];M[piv]=tmp;
+      var pv=M[col][col];
+      for(var c=col;c<=n;c++)M[col][c]/=pv;
+      for(r=0;r<n;r++){if(r===col)continue;var factor=M[r][col];if(!factor)continue;for(c=col;c<=n;c++)M[r][c]-=factor*M[col][c];}
+    }
+    return M.map(function(row){return row[n];});
+  }
+  function stepVelZeta(t,omega,z){if(t<0)t=0;var df=Math.sqrt(1-z*z);return Math.exp(-z*omega*t)*Math.sin(omega*df*t)*(omega/df);}
+  function estimateShaperVel(sh,testZ,testFreqs){
+    var A=sh.A,T=sh.T,n=A.length,invD=1/A.reduce(function(a,b){return a+b;},0);
+    var t_s=T[T.length-1]-T[0],hst=t_s*0.5,n_t=1000;
+    var time=new Array(n_t);
+    for(var i=0;i<n_t;i++)time[i]=-hst+(2*hst)*i/(n_t-1);
+    var omegas=testFreqs.filter(function(f){return f>0;}).map(function(f){return 2*Math.PI*f;});
+    var velocity=omegas.map(function(){return new Array(n_t).fill(0);});
+    for(var oi=0;oi<omegas.length;oi++)for(var ti=0;ti<n_t;ti++){
+      var v=0;for(var k=0;k<n;k++)v+=A[k]*stepVelZeta(time[ti]-T[k]+hst,omegas[oi],testZ);
+      velocity[oi][ti]=v*invD;
+    }
+    return {t:time,velocities:velocity};
+  }
+  var EXTRUDER_SMOOTHER_ORDER={ZV:5,MZV:7,ZVD:7,EI:7,'2HUMP_EI':9,'3HUMP_EI':10};
+  var EXTRUDER_SMOOTHER_RANGE={ZV:[0.98,1.02,5],MZV:[0.95,1.05,11],ZVD:[0.93,1.06,14],EI:[0.83,0.89,7],'2HUMP_EI':[0.65,0.75,11],'3HUMP_EI':[0.54,0.66,13]};
+  function calcExtruderSmoother(t,velocityRows,n,t_sm){
+    var n_t=t.length;
+    var x=t.map(function(tt){return 2*tt/t_sm;});
+    var weight=x.map(function(xx){return Math.max(1-xx*xx,0);});
+    var dt=t[1]-t[0],m=velocityRows.length,target=new Array(n_t).fill(0);
+    for(var r=0;r<m;r++){
+      var row=velocityRows[r],sumRow=row.reduce(function(a,b){return a+b;},0),scale=t_sm/(sumRow*dt);
+      for(var i=0;i<n_t;i++)target[i]+=row[i]*scale;
+    }
+    for(i=0;i<n_t;i++)target[i]/=m;
+    var P=legendreVander(x,n-1);
+    function buildG(extraPenalty){
+      var G=[];
+      for(var a=0;a<n;a++){var row=new Array(n).fill(0);
+        for(var b=0;b<n;b++){var s=0;for(var i2=0;i2<n_t;i2++)s+=P[i2][a]*(weight[i2]+(extraPenalty?extraPenalty[i2]:0))*P[i2][b];row[b]=s;}
+        G.push(row);}
+      return G;
+    }
+    var g=new Array(n).fill(0);
+    for(var a=0;a<n;a++){var s=0;for(var i3=0;i3<n_t;i3++)s+=P[i3][a]*weight[i3]*target[i3];g[a]=s;}
+    var k=[];for(var kk=0;kk<n;kk++)k.push(kk);
+    var sign=k.map(function(kk){return Math.pow(-1,kk);}),ones=k.map(function(){return 1;}),e0=k.map(function(kk){return kk===0?1:0;});
+    var constraints=[e0,sign,ones],rhs=[1,0,0],n_c=3;
+    var penalty=new Array(n_t).fill(0),a_sol=null;
+    for(var iter=0;iter<20;iter++){
+      var G=buildG(penalty),size=n+n_c,K=[];
+      for(var r2=0;r2<size;r2++)K.push(new Array(size).fill(0));
+      for(r2=0;r2<n;r2++)for(var c2=0;c2<n;c2++)K[r2][c2]=G[r2][c2];
+      for(r2=0;r2<n_c;r2++){for(c2=0;c2<n;c2++){K[n+r2][c2]=constraints[r2][c2];K[c2][n+r2]=constraints[r2][c2];}}
+      var f=g.concat(rhs),sol=solveLinear(K,f);
+      a_sol=sol.slice(0,n);
+      var h=P.map(function(row){return row.reduce(function(s2,p,idx){return s2+p*a_sol[idx];},0);});
+      var hmin=Math.min.apply(null,h);
+      if(hmin>-2e-3)break;
+      for(i=0;i<n_t;i++)if(h[i]<0)penalty[i]+=10;
+    }
+    var legC=legendreCoeffTable(n-1),Cpoly=leg2poly(a_sol,legC);
+    return Cpoly.map(function(c,i){return c*Math.pow(2,i);});
+  }
+  function twoModeExtruderSmoother(name,p1,p2,z1,z2){
+    var order=EXTRUDER_SMOOTHER_ORDER[name], rg=EXTRUDER_SMOOTHER_RANGE[name];
+    if(!order)return null; // smoother bases: no fitted counterpart (not implemented in Kalico)
+    var ratio=p2/p1, fn=BASE[name].fn;
+    var s=convolve(fn(1.0,z1),fn(ratio,z2));
+    function linspace(lo,hi,cnt){var out=[];for(var i=0;i<cnt;i++)out.push(lo+(hi-lo)*i/(cnt-1));return out;}
+    var tf1=linspace(rg[0],rg[1],rg[2]), tf2=linspace(rg[0],rg[1],rg[2]).map(function(v){return v*ratio;});
+    var e1=estimateShaperVel(s,z1,tf1), e2=estimateShaperVel(s,z2,tf2);
+    var velocities=e1.velocities.concat(e2.velocities);
+    var t_sm_unit=s.T[s.T.length-1]-s.T[0];
+    return calcExtruderSmoother(e1.t,velocities,order,t_sm_unit);
+  }
+  function evalPoly(c,tau){var w=0;for(var i=0;i<c.length;i++)w+=c[i]*Math.pow(tau,i);return w;}
+  function cornerAccelDemand(sh,C,t_sm){
+    var V1=100,V2=20,DT=5e-5,PAD=Math.max(0.06,t_sm*1.5);
+    var N=Math.round(2*PAD/DT), t=new Array(N), posN=new Array(N), v=0, t0=-PAD;
+    for(var i=0;i<N;i++){t[i]=t0+i*DT; var vel=(t[i]<0)?V1:V2; v+=vel*DT; posN[i]=v;}
+    var mid=Math.round(PAD/DT), base=posN[mid]; for(i=0;i<N;i++)posN[i]-=base;
+    function interpAt(tt){
+      var idx=(tt-t0)/DT;
+      if(idx<=0)return posN[0]; if(idx>=N-1)return posN[N-1];
+      var i0=Math.floor(idx),frac=idx-i0;
+      return posN[i0]*(1-frac)+posN[i0+1]*frac;
+    }
+    var A=sh.A,T=sh.T,tOffs=0;for(i=0;i<A.length;i++)tOffs+=A[i]*T[i];
+    var posExact=new Array(N);
+    for(i=0;i<N;i++){var s=0;for(var k=0;k<A.length;k++){var shift=T[k]-tOffs;s+=A[k]*interpAt(t[i]-shift);}posExact[i]=s;}
+    var ns=150,ds=t_sm/ns,ws=[],ss=[];
+    for(var j=0;j<=ns;j++){var sVal=-t_sm/2+j*ds; var tau=sVal/t_sm; ws.push(evalPoly(C,tau)/t_sm); ss.push(sVal);}
+    var posSmooth=new Array(N);
+    for(i=0;i<N;i++){var acc=0;for(j=0;j<=ns;j++)acc+=ws[j]*interpAt(t[i]-ss[j])*ds; posSmooth[i]=acc;}
+    function accFromPos(pos){
+      var vel=new Array(N),acc=new Array(N);
+      for(var i2=1;i2<N-1;i2++)vel[i2]=(pos[i2+1]-pos[i2-1])/(2*DT);
+      vel[0]=vel[1];vel[N-1]=vel[N-2];
+      for(i2=1;i2<N-1;i2++)acc[i2]=(vel[i2+1]-vel[i2-1])/(2*DT);
+      acc[0]=acc[1];acc[N-1]=acc[N-2];
+      return acc;
+    }
+    var accExact=accFromPos(posExact), accSmooth=accFromPos(posSmooth);
+    var trim=Math.round(0.002/DT);
+    var peakExact=0,peakSmooth=0;
+    var stepMs=Math.max(1,Math.floor(N/400));
+    var seriesExact=[],seriesSmooth=[];
+    for(i=trim;i<N-trim;i++){
+      if(Math.abs(accExact[i])>peakExact)peakExact=Math.abs(accExact[i]);
+      if(Math.abs(accSmooth[i])>peakSmooth)peakSmooth=Math.abs(accSmooth[i]);
+      if((i-trim)%stepMs===0){seriesExact.push({x:t[i]*1000,y:accExact[i]});seriesSmooth.push({x:t[i]*1000,y:accSmooth[i]});}
+    }
+    return {peakExact:peakExact,peakSmooth:peakSmooth,seriesExact:seriesExact,seriesSmooth:seriesSmooth};
+  }
 
   // smoothers (shaper_defs get_*_smoother): raw coeffs highest-degree-first, factor for t_sm
   var SM={
@@ -160,6 +318,26 @@
     Object.assign(ln(BLUE),{label:'residual @ peak 1'}),
     Object.assign(ln(AMBER,[6,4]),{label:'residual @ peak 2'}),
     Object.assign(ln(muted,[4,4],1),{label:'true ζ'})]},options:opts2});
+
+  var opts3={responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'top',align:'start',labels:{color:muted,usePointStyle:true,pointStyle:'line',boxWidth:26,padding:12,font:{size:12}}},
+      tooltip:{callbacks:{title:function(it){return (Math.round(it[0].parsed.x*100)/100)+' ms';},
+        label:function(it){return it.dataset.label+': '+(Math.round(it.parsed.y*1000)/1000);}}}},
+    scales:{x:{type:'linear',grid:{display:false},ticks:{color:muted},title:{display:true,text:'time (ms)',color:muted}},
+      y:{grid:{color:grid},ticks:{color:muted},title:{display:true,text:'kernel weight',color:muted}}}};
+  var c3=new Chart(document.getElementById('c3'),{data:{datasets:[
+    {type:'bar',label:'exact (impulses)',data:[],backgroundColor:AMBER,barThickness:6},
+    {type:'line',label:'fitted smoother',data:[],borderColor:BLUE,borderWidth:2,pointRadius:0,tension:0.1}]},options:opts3});
+
+  var opts4={responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'top',align:'start',labels:{color:muted,usePointStyle:true,pointStyle:'line',boxWidth:26,padding:12,font:{size:12}}},
+      tooltip:{callbacks:{title:function(it){return (Math.round(it[0].parsed.x*100)/100)+' ms';},
+        label:function(it){return it.dataset.label+': '+Math.round(it.parsed.y).toLocaleString()+' mm/s²';}}}},
+    scales:{x:{type:'linear',grid:{display:false},ticks:{color:muted},title:{display:true,text:'time (ms)',color:muted}},
+      y:{grid:{color:grid},ticks:{color:muted},title:{display:true,text:'extruder acceleration (mm/s²)',color:muted}}}};
+  var c4=new Chart(document.getElementById('c4'),{type:'line',data:{datasets:[
+    Object.assign(ln(AMBER,[6,4]),{label:'exact convolution'}),
+    Object.assign(ln(BLUE),{label:'fitted smoother'})]},options:opts4});
 
   function card(k,val,color){return '<div class="card"><div class="k">'+k+'</div><div class="v"'+(color?' style="color:'+color+'"':'')+'>'+val+'</div></div>';}
   function pct(x){return (Math.round(x*1000)/10).toFixed(1)+'%';}
@@ -217,6 +395,40 @@
     document.getElementById('note').innerHTML=
       'The <strong>single-mode</strong> shaper notches peak&nbsp;1 but lets peak&nbsp;2 through; the <strong>broadband smoother</strong> covers both, shallower and longer; the <strong>two-mode</strong> shaper puts a notch at each peak (with base '+current+', '+pct(residual(two,p1,z))+' / '+pct(residual(two,p2,z))+' at '+(dur(two)*1000).toFixed(1)+'&nbsp;ms). '+
       lower + 'The last card shows the cost of skipping the measurement and using the 0.1 default.';
+
+    // extruder synchronization: exact convolution vs a fitted smoother
+    // counterpart. Only defined for the six impulse bases -- a two-mode
+    // shaper built from a smoother base isn't an implemented Kalico
+    // feature, so there's no "exact" fallback to fit a counterpart for.
+    var C=isSmooth?null:twoModeExtruderSmoother(current,p1,p2,z,z);
+    if(!C){
+      c3.data.datasets[0].data=[]; c3.data.datasets[1].data=[]; c3.update();
+      c4.data.datasets[0].data=[]; c4.data.datasets[1].data=[]; c4.update();
+      document.getElementById('cards2').innerHTML='';
+      document.getElementById('note2').innerHTML=
+        'Smoother bases have no "exact convolution" counterpart to fit against &mdash; a smoother already applies to the extruder as itself. This comparison only applies to the six impulse bases (ZV, MZV, ZVD, EI, 2HUMP_EI, 3HUMP_EI), which is also what Kalico’s <code>2mode</code> shaper type currently supports.';
+      return;
+    }
+    var t_sm=dur(two);
+    var stems=two.T.map(function(tt,i){return {x:tt*1000,y:two.A[i]};});
+    var winPts=[]; for(i=0;i<=200;i++){var tau=-0.5+i/200; winPts.push({x:(tau+0.5)*t_sm*1000,y:evalPoly(C,tau)});}
+    c3.data.datasets[0].data=stems;
+    c3.data.datasets[1].data=winPts;
+    c3.update();
+
+    var acc=cornerAccelDemand(two,C,t_sm);
+    c4.data.datasets[0].data=acc.seriesExact;
+    c4.data.datasets[1].data=acc.seriesSmooth;
+    c4.update();
+
+    var reduction=acc.peakExact/Math.max(acc.peakSmooth,1e-6);
+    document.getElementById('cards2').innerHTML=
+      card('extruder kernel order', (C.length-1)+' ('+C.length+' coeffs)')+
+      card('peak extruder accel — exact', Math.round(acc.peakExact).toLocaleString()+' mm/s²', AMBER)+
+      card('peak extruder accel — fitted', Math.round(acc.peakSmooth).toLocaleString()+' mm/s²', BLUE)+
+      card('reduction', reduction.toFixed(1)+'×', TEAL);
+    document.getElementById('note2').innerHTML=
+      'The <strong>exact</strong> convolution ('+two.A.length+' impulses for base '+current+') is a mathematically perfect match to the shaped toolhead motion, but each impulse is a velocity-derivative discontinuity — the extruder must track '+two.A.length+' sudden kinks. The <strong>fitted</strong> smoother (order '+(C.length-1)+', matching Kalico’s per-base extruder-smoother order) trades a small amount of exactness for a continuous kernel, at a sharp 100&rarr;20&nbsp;mm/s corner cutting peak extruder acceleration by <strong>'+reduction.toFixed(1)+'×</strong> for this base/peak selection. This is exactly what <code>extruder_smoother.get_two_mode_extruder_smoother</code> computes, fit near both peaks with each peak’s own damping ratio.';
   }
 
   var tc=document.getElementById('types');
