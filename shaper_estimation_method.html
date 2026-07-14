@@ -180,12 +180,16 @@
     c2.data.datasets[0].data=an; c2.data.datasets[1].data=fd; c2.data.datasets[2].data=[{x:mnt*1000,y:mn}]; c2.update();
 
     var rnq=respAnalytic(sh,fq,z), roq=respFinite(sh,fq,z,nt);
+    var errq=roq-rnq;
     var note=document.getElementById('note');
-    note.innerHTML='At <strong>n_t = '+nt+'</strong>, the old finite-difference method '+(maxErr>0.01?'deviates by up to <strong>'+(maxErr*100).toFixed(1)+'%</strong> (absolute residual) from the analytic result':'already matches the analytic result closely')+'. The finite difference samples the position response and can straddle the sharp velocity trough (red dot), under- or over-estimating it. The analytic method evaluates that trough directly and checks the impulse kinks, so it stays exact — meaning fewer samples and less work for the same accuracy.';
+    note.innerHTML='<strong>Residual vibration</strong> is the score each method computes — lower is better suppression for a given shaper. This page compares the two <em>estimation methods</em>, not shapers: the <strong>analytic</strong> value is accurate, and the <strong>finite-difference</strong> value approximates it from <code>n_t</code> samples. '+
+      'At <strong>n_t = '+nt+'</strong> the finite-difference estimate is off by up to <strong>'+(maxErr*100).toFixed(1)+'%</strong> across the band. It samples the position response and can straddle the sharp velocity trough (red dot), so it usually <em>under-reports</em> the true residual — an optimistically wrong answer. The analytic method evaluates that trough directly and checks the impulse kinks, staying exact with far fewer samples. '+
+      '<strong>The red figures below flag estimation error, not a bad residual.</strong>';
     document.getElementById('cards').innerHTML=
-      card('residual @ '+fq+'Hz (new)',(rnq*100).toFixed(2)+'%')+
-      card('residual @ '+fq+'Hz (old)',(roq*100).toFixed(2)+'%',Math.abs(rnq-roq)>0.02?RED:null)+
-      card('max deviation over band',(maxErr*100).toFixed(2)+'%',maxErr>0.05?RED:null);
+      card('residual @ '+fq+'Hz — analytic (accurate)',(rnq*100).toFixed(2)+'%')+
+      card('residual @ '+fq+'Hz — finite-diff (n_t)',(roq*100).toFixed(2)+'%')+
+      card('finite-diff error @ '+fq+'Hz (est − accurate)',(errq>=0?'+':'')+(errq*100).toFixed(2)+'%'+(errq<0?' (under-reports)':(errq>0?' (over-reports)':'')),Math.abs(errq)>0.02?RED:null)+
+      card('worst estimation error across band',(maxErr*100).toFixed(2)+'%',maxErr>0.05?RED:null);
   }
 
   var tc=document.getElementById('types');
