@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Input shaper response explorer — branch vs upstream</title>
+<title>Input shaper response explorer — Klipper / Kalico</title>
 <style>
   :root{
     --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
@@ -52,13 +52,29 @@
   .card .v{font-size:20px;font-weight:500;margin-top:2px;}
   .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
   a{color:var(--blue);}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:.7rem 0 .85rem;margin-bottom:1.25rem;border-bottom:.5px solid var(--border);font-size:14px;}
+  .topnav .brand{font-weight:500;color:var(--text-primary);text-decoration:none;margin-right:auto;}
+  .topnav .links{display:flex;flex-wrap:wrap;gap:12px 16px;}
+  .topnav a.nav{color:var(--text-secondary);text-decoration:none;padding-bottom:3px;border-bottom:2px solid transparent;}
+  .topnav a.nav:hover{color:var(--text-primary);}
+  .topnav a.nav.current{color:var(--blue);border-bottom-color:var(--blue);}
+  .topnav .brand.current{border-bottom:2px solid var(--blue);padding-bottom:3px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a class="back" href="index.html">← KlipperVisuals</a>
-  <h1 style="margin-top:.5rem;">Input shaper response explorer</h1>
-  <p class="sub">Residual-vibration ratio vs frequency for each Klipper/Kalico input shaper, computed from the impulse sequences in <code>shaper_defs.py</code>. The <code>3hump_ei</code> shaper (◆) differs between your branch and upstream — a coefficient bug fix that matters at non-zero damping.</p>
+  <nav class="topnav">
+    <a class="brand" href="index.html">KlipperVisuals</a>
+    <div class="links">
+      <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
+      <a class="nav current" href="input_shaper_response.html">Input shapers</a>
+      <a class="nav" href="smoother_vs_shaper.html">Smoothers</a>
+      <a class="nav" href="resonance_excitation.html">Resonance test</a>
+      <a class="nav" href="shaper_estimation_method.html">Estimation</a>
+    </div>
+  </nav>
+  <h1>Input shaper response explorer</h1>
+  <p class="sub">Residual-vibration ratio vs frequency for each Klipper/Kalico input shaper, computed from the impulse sequences in <code>shaper_defs.py</code>. The <code>3hump_ei</code> shaper (◆) differs between a corrected version and upstream — a coefficient bug fix that matters at non-zero damping.</p>
 
   <div class="grouplabel">shaper type</div>
   <div class="types" id="types"></div>
@@ -70,7 +86,7 @@
 
   <div id="note" class="note same"></div>
 
-  <div class="legend" id="legend"></div>
+  <p style="font-size:13px;color:var(--text-muted);margin:.25rem 0 1rem;">Click a legend entry on any chart to hide or show that line.</p>
 
   <div class="cap">residual vibration vs frequency <span style="color:var(--text-muted)">(lower = better suppression; the notch sits at the tuned frequency)</span></div>
   <div class="chart"><canvas id="c1"></canvas></div>
@@ -83,7 +99,7 @@
 
   <div class="cards" id="cards"></div>
 
-  <p class="foot">Response uses the classic residual-vibration amplitude formula <code>V(f)=|Σ Aᵢ·e^(−ζω(T_N−Tᵢ))·e^(jω_d Tᵢ)| / ΣAᵢ</code> (Klipper's historical <code>estimate_shaper</code>, kept as <code>estimate_shaper_old</code> on your branch). Your branch's current <code>shaper_calibrate</code> scores shapers by the step-response velocity minimum instead — see the <a href="shaper_estimation_method.html">estimation-method page</a>. The relative branch-vs-upstream difference holds under either metric. The upstream <code>3hump_ei</code> row <code>[…, 3.29160 − 1.44380]</code> collapses to one number, truncating the damping polynomial from degree 3 to degree 2 for every row; your branch splits it into <code>3.29160, −1.44380</code>. Rendered with Chart.js.</p>
+  <p class="foot">Response uses the classic residual-vibration amplitude formula <code>V(f)=|Σ Aᵢ·e^(−ζω(T_N−Tᵢ))·e^(jω_d Tᵢ)| / ΣAᵢ</code> (Klipper's historical <code>estimate_shaper</code>, kept as <code>estimate_shaper_old</code>). Kalico's current <code>shaper_calibrate</code> scores shapers by the step-response velocity minimum instead — see the <a href="shaper_estimation_method.html">estimation-method page</a>. The relative difference holds under either metric. The upstream <code>3hump_ei</code> row <code>[…, 3.29160 − 1.44380]</code> collapses to one number, truncating the damping polynomial from degree 3 to degree 2 for every row; the fix splits it into <code>3.29160, −1.44380</code>. Rendered with Chart.js.</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -113,7 +129,7 @@
   var T2=[[0,0,0,0],[0.49890,0.16270,-0.54262,6.16180],[0.99748,0.18382,-1.58270,8.17120],[1.49920,-0.09297,-0.28338,1.85710]];
   var A2=[[0.16054,0.76699,2.26560,-1.22750],[0.33911,0.45081,-2.58080,1.73650],[0.34089,-0.61533,-0.68765,0.42261],[0.15997,-0.60246,1.00280,-0.93145]];
   var T3=[[0,0,0,0],[0.49974,0.23834,0.44559,12.4720],[0.99849,0.29808,-2.36460,23.3990],[1.49870,0.10306,-2.01390,17.0320],[1.99960,-0.28231,0.61536,5.40450]];
-  // branch (fixed): row0 has 3.29160, -1.44380 as separate coeffs
+  // fixed: row0 has 3.29160, -1.44380 as separate coeffs
   var A3=[[0.11275,0.76632,3.29160,-1.44380],[0.23698,0.61164,-2.57850,4.85220],[0.30008,-0.19062,-2.14560,0.13744],[0.23775,-0.73297,0.46885,-2.08650],[0.11244,-0.45439,0.96382,-1.46000]];
   // upstream (buggy): row0 col2 collapses to 3.29160-1.44380; k=3 so col3 of every row is ignored
   var A3u=A3.map(function(r){return r.slice();}); A3u[0][2]=3.29160-1.44380;
@@ -141,7 +157,7 @@
   function baseOpts(yLabel,xLabel,ymax){
     return {responsive:true,maintainAspectRatio:false,animation:false,
       interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{callbacks:{
+      plugins:{legend:{display:true,position:'top',align:'start',labels:{color:muted,boxWidth:18,boxHeight:2,padding:12,font:{size:12}}},tooltip:{callbacks:{
         title:function(it){return (Math.round(it[0].parsed.x*1000)/1000)+'';},
         label:function(it){return it.dataset.label+': '+(Math.round(it.parsed.y*1000)/1000);}}}},
       scales:{x:{type:'linear',grid:{display:false},ticks:{color:muted},title:{display:true,text:xLabel,color:muted}},
@@ -149,19 +165,14 @@
   }
   function line(color,dash,w){return{data:[],borderColor:color,borderWidth:w||2,borderDash:dash||[],pointRadius:0,tension:0.05};}
   var c1=new Chart(document.getElementById('c1'),{type:'line',data:{datasets:[
-    Object.assign(line(BLUE),{label:'branch'}),Object.assign(line(AMBER,[6,4]),{label:'upstream'})]},options:baseOpts('residual vibration','frequency (Hz)',1.05)});
+    Object.assign(line(BLUE),{label:'fixed'}),Object.assign(line(AMBER,[6,4]),{label:'upstream'})]},options:baseOpts('residual vibration','frequency (Hz)',1.05)});
   var c3=new Chart(document.getElementById('c3'),{type:'line',data:{datasets:[
-    Object.assign(line(BLUE),{label:'branch'}),Object.assign(line(AMBER,[6,4]),{label:'upstream'})]},options:baseOpts('worst residual in band','damping_ratio',undefined)});
+    Object.assign(line(BLUE),{label:'fixed'}),Object.assign(line(AMBER,[6,4]),{label:'upstream'})]},options:baseOpts('worst residual in band','damping_ratio',undefined)});
   var o2=baseOpts('amplitude','delay (ms)',undefined);
   var c2=new Chart(document.getElementById('c2'),{type:'bar',data:{datasets:[
-    {label:'branch',data:[],backgroundColor:BLUE,barThickness:7},
+    {label:'fixed',data:[],backgroundColor:BLUE,barThickness:7},
     {label:'upstream',data:[],backgroundColor:AMBER,barThickness:7}]},options:o2});
 
-  function setLegend(showUp){
-    document.getElementById('legend').innerHTML=
-      '<span><span class="sw" style="background:'+BLUE+'"></span>your branch</span>'+
-      (showUp?'<span><span class="sw" style="background:repeating-linear-gradient(90deg,'+AMBER+' 0 5px,transparent 5px 9px)"></span>upstream (buggy)</span>':'');
-  }
   function card(k,val){return '<div class="card"><div class="k">'+k+'</div><div class="v">'+val+'</div></div>';}
 
   function update(){
@@ -190,16 +201,15 @@
       if(hasDiff)su.push({x:d,y:worstInBand(sd.up,f,d)});}
     c3.data.datasets[0].data=sb; c3.data.datasets[1].data=hasDiff?su:[]; c3.update();
 
-    setLegend(hasDiff);
     var note=document.getElementById('note');
     if(hasDiff){note.className='note diff';
-      note.innerHTML='<strong>'+current+' differs between branch and upstream.</strong> Upstream truncates the damping-ratio polynomial (degree&nbsp;3&nbsp;→&nbsp;2), so the impulse amplitudes and delays drift as <code>damping_ratio</code> rises. At <code>damping_ratio&nbsp;=&nbsp;0</code> the two are identical — increase the slider to see them separate.';
+      note.innerHTML='<strong>'+current+' differs between the corrected version and upstream.</strong> Upstream truncates the damping-ratio polynomial (degree&nbsp;3&nbsp;→&nbsp;2), so the impulse amplitudes and delays drift as <code>damping_ratio</code> rises. At <code>damping_ratio&nbsp;=&nbsp;0</code> the two are identical — increase the slider to see them separate.';
     }else{note.className='note same';
-      note.innerHTML='<code>'+current+'</code> is identical between your branch and upstream. Select <code>3hump_ei</code> to see the diff.';}
+      note.innerHTML='<code>'+current+'</code> is identical between the corrected version and upstream. Select <code>3hump_ei</code> to see the diff.';}
 
     var wB=worstInBand(sd.fn,f,dr);
     var cards=card('impulses',shB.A.length)+card('shaper duration',(shB.T[shB.T.length-1]*1000).toFixed(1)+' ms')+
-      card('worst residual (branch)',(wB*100).toFixed(1)+'%');
+      card('worst residual (fixed)',(wB*100).toFixed(1)+'%');
     if(hasDiff){var wU=worstInBand(sd.up,f,dr);
       cards+=card('worst residual (upstream)',(wU*100).toFixed(1)+'%');}
     document.getElementById('cards').innerHTML=cards;

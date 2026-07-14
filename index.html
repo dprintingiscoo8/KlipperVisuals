@@ -37,10 +37,27 @@
   .note{margin-top:2rem;padding:1rem 1.25rem;background:var(--surface-1);border:.5px solid var(--border);
         border-radius:var(--radius);font-size:13.5px;color:var(--text-secondary);}
   .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:.7rem 0 .85rem;margin-bottom:1.5rem;border-bottom:.5px solid var(--border);font-size:14px;}
+  .topnav .brand{font-weight:500;color:var(--text-primary);text-decoration:none;margin-right:auto;}
+  .topnav .links{display:flex;flex-wrap:wrap;gap:12px 16px;}
+  .topnav a.nav{color:var(--text-secondary);text-decoration:none;padding-bottom:3px;border-bottom:2px solid transparent;}
+  .topnav a.nav:hover{color:var(--text-primary);text-decoration:none;}
+  .topnav a.nav.current{color:var(--blue);border-bottom-color:var(--blue);}
+  .topnav .brand.current{border-bottom:2px solid var(--blue);padding-bottom:3px;}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="topnav">
+    <a class="brand current" href="index.html">KlipperVisuals</a>
+    <div class="links">
+      <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
+      <a class="nav" href="input_shaper_response.html">Input shapers</a>
+      <a class="nav" href="smoother_vs_shaper.html">Smoothers</a>
+      <a class="nav" href="resonance_excitation.html">Resonance test</a>
+      <a class="nav" href="shaper_estimation_method.html">Estimation</a>
+    </div>
+  </nav>
   <h1>KlipperVisuals</h1>
   <p class="sub">Interactive visualizations of motion-control internals in Klipper / Kalico — pressure advance, input shaping, and resonance compensation.</p>
 
@@ -50,8 +67,8 @@
   </a>
 
   <a class="card" href="input_shaper_response.html">
-    <h2>Input shaper response explorer<span class="tag">branch vs upstream</span></h2>
-    <p>Residual-vibration curves for every input shaper (ZV, MZV, ZVD, EI, 2hump/3hump EI), reproduced from <code>shaper_defs.py</code>. Overlays your branch against upstream for the <code>3hump_ei</code> coefficient bug fix, with an impulse view and a damping-ratio sweep showing where upstream's truncated polynomial degrades.</p>
+    <h2>Input shaper response explorer<span class="tag">3hump_ei fix</span></h2>
+    <p>Residual-vibration curves for every input shaper (ZV, MZV, ZVD, EI, 2hump/3hump EI), reproduced from <code>shaper_defs.py</code>. Overlays a corrected <code>3hump_ei</code> against upstream for the coefficient bug, with an impulse view and a damping-ratio sweep showing where upstream's truncated polynomial degrades.</p>
   </a>
 
   <a class="card" href="smoother_vs_shaper.html">
@@ -60,17 +77,17 @@
   </a>
 
   <a class="card" href="resonance_excitation.html">
-    <h2>Resonance test excitation explorer<span class="tag">branch vs upstream</span></h2>
-    <p>The motion <code>TEST_RESONANCES</code> generates — frequency sweep, per-cycle acceleration, and the optional sweeping oscillation. Overlays the enforced accel/velocity limits your branch derives from the real sequence against upstream's fixed formula, which ignores the sweeping term.</p>
+    <h2>Resonance test excitation explorer<span class="tag">limit fix</span></h2>
+    <p>The motion <code>TEST_RESONANCES</code> generates — frequency sweep, per-cycle acceleration, and the optional sweeping oscillation. Overlays the enforced accel/velocity limits derived from the real sequence against upstream's fixed formula, which ignores the sweeping term.</p>
   </a>
 
   <a class="card" href="shaper_estimation_method.html">
     <h2>Shaper estimation: old vs new<span class="tag">~2x speedup</span></h2>
-    <p>How <code>SHAPER_CALIBRATE</code> scores a shaper: the old finite-difference of the step response vs the branch's analytic velocity with kink-exact evaluation and parabolic-refined minimum. Drop the sample count and watch the old method deviate while the new one stays exact.</p>
+    <p>How <code>SHAPER_CALIBRATE</code> scores a shaper: the old finite-difference of the step response vs an analytic velocity with kink-exact evaluation and parabolic-refined minimum. Drop the sample count and watch the old method deviate while the new one stays exact.</p>
   </a>
 
   <div class="note">
-    <strong>Note on provenance.</strong> The pressure-advance page models a custom <code>bleeding-edge-v2</code> implementation (<code>tanh</code>/<code>recipr</code> nonlinear PA) that is not in upstream Kalico or Klipper. The input-shaper, smoother, resonance-excitation, and estimation pages reproduce your branch's <code>shaper_defs.py</code>, <code>resonance_tester.py</code>, and <code>shaper_calibrate.py</code> and contrast them against <code>upstream/bleeding-edge-v2</code>.
+    <strong>Note on provenance.</strong> The pressure-advance page models a custom <code>bleeding-edge-v2</code> implementation (<code>tanh</code>/<code>recipr</code> nonlinear PA) that is not in upstream Kalico or Klipper. The input-shaper, smoother, resonance-excitation, and estimation pages reproduce the Kalico shaper code (<code>shaper_defs.py</code>, <code>resonance_tester.py</code>, <code>shaper_calibrate.py</code>) with proposed fixes and contrast them against current upstream Kalico (<code>bleeding-edge-v2</code>).
   </div>
 
   <p class="foot">Math and kernels reproduced from <code>klippy/chelper/kin_extruder.c</code>, <code>klippy/extras/extruder_smoother.py</code>, and <code>klippy/extras/shaper_defs.py</code>. Charts rendered with Chart.js (CDN). Source: <a href="https://github.com/Hannott/KlipperVisuals">Hannott/KlipperVisuals</a>.</p>

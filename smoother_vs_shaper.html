@@ -47,11 +47,27 @@
   .card .v{font-size:20px;font-weight:500;margin-top:2px;}
   .foot{margin-top:2.5rem;font-size:13px;color:var(--text-muted);border-top:.5px solid var(--border);padding-top:1rem;}
   a{color:var(--blue);}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:.7rem 0 .85rem;margin-bottom:1.25rem;border-bottom:.5px solid var(--border);font-size:14px;}
+  .topnav .brand{font-weight:500;color:var(--text-primary);text-decoration:none;margin-right:auto;}
+  .topnav .links{display:flex;flex-wrap:wrap;gap:12px 16px;}
+  .topnav a.nav{color:var(--text-secondary);text-decoration:none;padding-bottom:3px;border-bottom:2px solid transparent;}
+  .topnav a.nav:hover{color:var(--text-primary);}
+  .topnav a.nav.current{color:var(--blue);border-bottom-color:var(--blue);}
+  .topnav .brand.current{border-bottom:2px solid var(--blue);padding-bottom:3px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a class="back" href="index.html">← KlipperVisuals</a>
+  <nav class="topnav">
+    <a class="brand" href="index.html">KlipperVisuals</a>
+    <div class="links">
+      <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
+      <a class="nav" href="input_shaper_response.html">Input shapers</a>
+      <a class="nav current" href="smoother_vs_shaper.html">Smoothers</a>
+      <a class="nav" href="resonance_excitation.html">Resonance test</a>
+      <a class="nav" href="shaper_estimation_method.html">Estimation</a>
+    </div>
+  </nav>
   <h1>Smoothers vs shapers</h1>
   <p class="sub">Kalico input <em>smoothers</em> replace a classic shaper's discrete impulses with a smooth polynomial window <code>w(t)</code> (a continuous impulse distribution). Compare any shaper against any smoother on the same vibration-reduction axes and in the time domain. Smoothers are a Kalico feature — not present in mainline Klipper.</p>
 
@@ -66,10 +82,7 @@
     <div class="ctl"><div class="lbl"><span>damping_ratio</span><span class="val" id="o-dr">0.10</span></div><input type="range" id="dr" min="0" max="0.3" step="0.005" value="0.1"></div>
   </div>
 
-  <div class="legend">
-    <span><span class="sw" style="background:var(--blue)"></span>shaper (impulses)</span>
-    <span><span class="sw" style="background:var(--teal)"></span>smoother (polynomial)</span>
-  </div>
+  <p style="font-size:13px;color:var(--text-muted);margin:.25rem 0 1rem;">Click a legend entry on either chart to hide or show that line.</p>
 
   <div class="cap">residual vibration vs frequency <span style="color:var(--text-muted)">(lower = better suppression)</span></div>
   <div class="chart"><canvas id="c1"></canvas></div>
@@ -80,7 +93,7 @@
   <div class="note" id="note"></div>
   <div class="cards" id="cards"></div>
 
-  <p class="foot">Smoother windows <code>w(t)=Σ Cₖ tᵏ</code> over <code>[−t_sm/2, t_sm/2]</code>, <code>t_sm = factor/freq</code>, coefficients from <code>shaper_defs.py</code> (<code>get_*_smoother</code>). Response is evaluated by treating the window as a dense impulse train and applying the classic residual-vibration amplitude formula (see the <a href="input_shaper_response.html">input shaper page</a>). Your branch adds a per-axis <code>damping_ratio</code> for smoothers (used when fitting the synchronized extruder smoother); upstream used a fixed 0.1. Rendered with Chart.js.</p>
+  <p class="foot">Smoother windows <code>w(t)=Σ Cₖ tᵏ</code> over <code>[−t_sm/2, t_sm/2]</code>, <code>t_sm = factor/freq</code>, coefficients from <code>shaper_defs.py</code> (<code>get_*_smoother</code>). Response is evaluated by treating the window as a dense impulse train and applying the classic residual-vibration amplitude formula (see the <a href="input_shaper_response.html">input shaper page</a>). Kalico adds a per-axis <code>damping_ratio</code> for smoothers (used when fitting the synchronized extruder smoother); earlier versions assumed a fixed 0.1. Rendered with Chart.js.</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -134,7 +147,7 @@
 
   function baseOpts(yLabel,xLabel,ymax){
     return {responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{callbacks:{
+      plugins:{legend:{display:true,position:'top',align:'start',labels:{color:muted,boxWidth:18,boxHeight:2,padding:12,font:{size:12}}},tooltip:{callbacks:{
         title:function(it){return (Math.round(it[0].parsed.x*1000)/1000)+'';},
         label:function(it){return it.dataset.label+': '+(Math.round(it.parsed.y*1000)/1000);}}}},
       scales:{x:{type:'linear',grid:{display:false},ticks:{color:muted},title:{display:true,text:xLabel,color:muted}},
