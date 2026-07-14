@@ -54,6 +54,7 @@
       <a class="nav" href="nonlinear_pa_explorer.html">Pressure advance</a>
       <a class="nav" href="input_shaper_response.html">Input shapers</a>
       <a class="nav" href="smoother_vs_shaper.html">Smoothers</a>
+      <a class="nav" href="extruder_smoother_fit.html">Extruder fit</a>
       <a class="nav" href="resonance_excitation.html">Resonance test</a>
       <a class="nav" href="shaper_estimation_method.html">Estimation</a>
     </div>
@@ -74,6 +75,11 @@
   <a class="card" href="smoother_vs_shaper.html">
     <h2>Smoothers vs shapers<span class="tag">Kalico feature</span></h2>
     <p>Kalico input smoothers replace a shaper's discrete impulses with a smooth polynomial window. Compare any shaper against any smoother on shared vibration-reduction axes and in the time domain, from the <code>get_*_smoother</code> definitions in <code>shaper_defs.py</code>.</p>
+  </a>
+
+  <a class="card" href="extruder_smoother_fit.html">
+    <h2>Extruder smoother kernel fit<span class="tag">fit rework</span></h2>
+    <p>The polynomial kernel that keeps pressure advance synchronized with input shaping. Compares the fitted kernel <strong>before vs after</strong> the <code>extruder_smoother.py</code> rework (analytic targets, constrained least squares, Legendre basis) for every shaper — <code>3hump_ei</code> improves the most.</p>
   </a>
 
   <a class="card" href="resonance_excitation.html">
