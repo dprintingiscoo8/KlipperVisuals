@@ -384,7 +384,11 @@
     document.getElementById('o-z').textContent=z.toFixed(3);
     var fn=BASE[current].fn, isSmooth=BASE[current].smooth;
     var single=fn(p1,z), two=convolve(fn(p1,z),fn(p2,z)), bb=smootherShaper(SM.smooth_zvd_ei,p1);
-
+    var scv = +document.getElementById("SCV").value;
+    var accel = +document.getElementById("accl").value;
+    document.getElementById("o-SCV").textContent = scv.toFixed(1);
+    document.getElementById("o-accl").textContent = accel.toLocaleString();
+    
     var pts=320, dTwo=[],dSingle=[],dBB=[];
     for(var i=0;i<=pts;i++){var f=1+(159)*i/pts;
       dTwo.push({x:f,y:residual(two,f,z)});
