@@ -135,7 +135,8 @@
   function shaperOffset(sh){var A=sh.A,T=sh.T,sA=0,sAT=0;
     for(var i=0;i<A.length;i++){sA+=A[i];sAT+=A[i]*T[i];}return sA?sAT/sA:0;}
   function shaperSmoothing(sh,accel,scv){
-    accel=accel||20000; scv=(scv==null?5.0:scv);
+    let accel = Number(document.getElementById("accl").value);
+    let scv = Number(document.getElementById("SCV").value);
     var A=sh.A,T=sh.T,n=A.length,sA=0,i;
     for(i=0;i<n;i++)sA+=A[i];
     var invD=1/sA, ha=accel*0.5, ts=shaperOffset(sh), o90x=0,o90y=0,o180=0;
